@@ -29,4 +29,12 @@ void post(std::function<void()> fn);
 // Drop all pending work and restart the loop (mainly for tests).
 void reset();
 
+// Sketches commonly listen on privileged ports (AsyncWebServer server(80)), which
+// an unprivileged desktop process usually can't bind. This offset is added to every
+// *listening* port below 1024 (AsyncServer, AsyncWebServer, AsyncUDP::listen).
+// Initial value: the ESPASYNCEMU_PORT_OFFSET environment variable, else 0.
+// Example: setPortOffset(8000) makes server(80) listen on 8080.
+void setPortOffset(unsigned offset);
+unsigned portOffset();
+
 }  // namespace AsyncEmu

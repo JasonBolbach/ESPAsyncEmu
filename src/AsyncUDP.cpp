@@ -141,12 +141,12 @@ bool AsyncUDP::connect(IPAddress addr, uint16_t port) {
 }
 
 bool AsyncUDP::listen(IPAddress addr, uint16_t port) {
-    return _i->bindTo(udp::endpoint(toAsio(addr), port), false);
+    return _i->bindTo(udp::endpoint(toAsio(addr), mapPort(port)), false);
 }
 bool AsyncUDP::listen(uint16_t port) { return listen(IPAddress(), port); }
 
 bool AsyncUDP::listenMulticast(IPAddress addr, uint16_t port, uint8_t ttl) {
-    if (!_i->bindTo(udp::endpoint(udp::v4(), port), true)) return false;
+    if (!_i->bindTo(udp::endpoint(udp::v4(), mapPort(port)), true)) return false;
     error_code ec;
     _i->sock.set_option(asio::ip::multicast::join_group(toAsio(addr)), ec);
     if (ec) { _i->reset(); return false; }

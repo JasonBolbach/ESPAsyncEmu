@@ -415,7 +415,7 @@ struct AsyncServer::Impl : std::enable_shared_from_this<AsyncServer::Impl> {
     void begin() {
         if (listening) return;
         error_code ec;
-        tcp::endpoint ep(toAsio(addr), port);
+        tcp::endpoint ep(toAsio(addr), mapPort(port));
         acceptor.open(ep.protocol(), ec);
         if (ec) return;
         acceptor.set_option(tcp::acceptor::reuse_address(true), ec);

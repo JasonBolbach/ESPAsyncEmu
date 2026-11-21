@@ -142,6 +142,20 @@ int main() {
     }
 
     CHECK(!testFailed());
+    // ---- port offset for privileged ports ------------------------------------------
+    {
+        CHECK(AsyncEmu::portOffset() == 0);
+        AsyncEmu::setPortOffset(31000);
+        AsyncServer priv(80);           // would need root without the offset
+        priv.begin();
+        CHECK(priv.status() == 1);
+        CHECK(priv.port() == 31080);
+        AsyncServer high(40123);        // ports >= 1024 are never shifted
+        high.begin();
+        CHECK(high.port() == 40123);
+        AsyncEmu::setPortOffset(0);
+    }
+
     std::puts("tcp_test OK");
     return 0;
 }

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ESPASYNCEMU_BUILD_TESTS "Build ESPAsyncEmu tests" ${PROJECT_IS_TOP_LEVEL})
+option(ESPASYNCEMU_BUILD_EXAMPLES "Build examples and integrations" ${PROJECT_IS_TOP_LEVEL})
 
 # --- Asio (standalone, header-only, Boost license) -------------------------
 include(cmake/FetchAsio.cmake)
@@ -14,6 +15,13 @@ add_library(ESPAsyncEmu STATIC
     src/loop.cpp
     src/AsyncTCP.cpp
     src/AsyncUDP.cpp
+    src/FS.cpp
+    src/WebUtil.cpp
+    src/WebRequest.cpp
+    src/WebResponse.cpp
+    src/WebServer.cpp
+    src/AsyncEventSource.cpp
+    src/AsyncWebSocket.cpp
 )
 add_library(ESPAsyncEmu::ESPAsyncEmu ALIAS ESPAsyncEmu)
 
@@ -40,4 +48,12 @@ endif()
 if(ESPASYNCEMU_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(ESPASYNCEMU_BUILD_EXAMPLES)
+    if(ESPASYNCEMU_BUILD_TESTS)
+        enable_testing()  # examples register smoke tests
+    endif()
+    add_subdirectory(examples)
+    add_subdirectory(integrations)
 endif()

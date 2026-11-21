@@ -1,0 +1,18 @@
+# Optional: only built when SDL2 is installed.
+find_package(SDL2 QUIET)
+if(TARGET SDL2::SDL2)
+    set(_sdl_target SDL2::SDL2)
+elseif(TARGET SDL2::SDL2main OR SDL2_FOUND)
+    set(_sdl_target ${SDL2_LIBRARIES})
+endif()
+
+if(_sdl_target)
+    add_executable(sdl_demo sdl_demo.cpp)
+    target_link_libraries(sdl_demo PRIVATE ESPAsyncEmu::ESPAsyncEmu ${_sdl_target})
+    if(NOT TARGET SDL2::SDL2)
+        target_include_directories(sdl_demo PRIVATE ${SDL2_INCLUDE_DIRS})
+    endif()
+    message(STATUS "ESPAsyncEmu: building SDL2 integration")
+else()
+    message(STATUS "ESPAsyncEmu: SDL2 not found, skipping SDL2 integration")
+endif()

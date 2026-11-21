@@ -2,6 +2,7 @@
 #include "AsyncEmuInternal.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <memory>
 
 namespace AsyncEmu {
@@ -37,5 +38,23 @@ void stop() { context().stop(); }
 void post(std::function<void()> fn) { asio::post(context(), std::move(fn)); }
 
 void reset() { ctxPtr().reset(new asio::io_context(1)); }
+
+static unsigned& offsetRef() {
+    static unsigned v = [] {
+        const char* e = std::getenv("ESPASYNCEMU_PORT_OFFSET");
+        return e ? static_cast<unsigned>(std::strtoul(e, nullptr, 10)) : 0u;
+    }();
+    return v;
+}
+
+void setPortOffset(unsigned offset) { offsetRef() = offset; }
+unsigned portOffset() { return offsetRef(); }
+
+uint16_t mapPort(uint16_t port) {
+    unsigned off = offsetRef();
+    if (port == 0 || port >= 1024 || off == 0) return port;
+    unsigned mapped = port + off;
+    return mapped > 65535 ? port : static_cast<uint16_t>(mapped);
+}
 
 }  // namespace AsyncEmu

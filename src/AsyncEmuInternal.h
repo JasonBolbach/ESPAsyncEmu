@@ -9,6 +9,9 @@ namespace AsyncEmu {
 // The single shared Asio context all emulated sockets/timers live on.
 asio::io_context& context();
 
+// Applies the port offset (see AsyncEmu::setPortOffset) to a privileged listening port.
+uint16_t mapPort(uint16_t port);
+
 inline asio::ip::address_v4 toAsio(const IPAddress& ip) {
     asio::ip::address_v4::bytes_type b{{ip[0], ip[1], ip[2], ip[3]}};
     return asio::ip::address_v4(b);

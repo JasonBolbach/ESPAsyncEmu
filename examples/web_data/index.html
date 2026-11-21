@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESPAsyncEmu demo</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><h1>ESPAsyncEmu demo</h1><p>Served by <code>AsyncWebServer</code> running on your desktop. Host: <b>%HOST%</b></p></header>
+<main>
+  <section>
+    <h2>Status <small>(GET /api/status)</small></h2>
+    <pre id="status">loading...</pre>
+    <button id="refresh">Refresh</button>
+  </section>
+
+  <section>
+    <h2>Server-Sent Events <small>(/events)</small></h2>
+    <p>Tick: <b id="tick">-</b> &middot; uptime: <b id="uptime">-</b> s</p>
+  </section>
+
+  <section>
+    <h2>WebSocket chat <small>(/ws)</small></h2>
+    <div id="chat" class="box"></div>
+    <form id="chatForm"><input id="msg" placeholder="say something" autocomplete="off"><button>Send</button></form>
+  </section>
+
+  <section>
+    <h2>Form POST <small>(/api/echo)</small></h2>
+    <form id="echoForm"><input name="name" placeholder="name"><input name="color" placeholder="color"><button>Send</button></form>
+    <pre id="echoOut"></pre>
+  </section>
+
+  <section>
+    <h2>File upload <small>(multipart to /upload)</small></h2>
+    <form id="uploadForm"><input type="file" name="file"><button>Upload</button></form>
+    <p id="uploadOut"></p>
+    <ul id="files"></ul>
+  </section>
+
+  <section>
+    <h2>Protected <small>(/admin, user <code>admin</code> / password <code>secret</code>)</small></h2>
+    <a href="/admin">Open the admin page</a>
+  </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

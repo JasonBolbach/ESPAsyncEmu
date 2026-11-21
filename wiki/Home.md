@@ -1,6 +1,6 @@
 # ESPAsyncEmu
 
-Desktop emulation of the ESP8266/ESP32 async networking libraries (ESPAsyncTCP, ESPAsyncUDP, and later ESPAsyncWebServer), built on standalone [Asio](https://think-async.com/Asio/). It lets firmware-style code that uses the `AsyncClient` / `AsyncServer` / `AsyncUDP` APIs run and be tested on macOS, Linux and Windows.
+Desktop emulation of the ESP8266/ESP32 async networking libraries (ESPAsyncTCP, ESPAsyncUDP and ESPAsyncWebServer with WebSocket and Server-Sent Events), built on standalone [Asio](https://think-async.com/Asio/). It lets firmware-style code that uses the `AsyncClient` / `AsyncServer` / `AsyncUDP` APIs run and be tested on macOS, Linux and Windows.
 
 ## Pages
 
@@ -10,6 +10,11 @@ Desktop emulation of the ESP8266/ESP32 async networking libraries (ESPAsyncTCP, 
 | [Event Loop](Event-Loop.md) | `AsyncEmu::poll()` and friends, how to drive the emulation |
 | [ESPAsyncTCP](ESPAsyncTCP.md) | `AsyncClient` / `AsyncServer`: API, state machine, write path |
 | [ESPAsyncUDP](ESPAsyncUDP.md) | `AsyncUDP` / `AsyncUDPPacket` / `AsyncUDPMessage` |
+| [ESPAsyncWebServer](ESPAsyncWebServer.md) | `AsyncWebServer`: routing, requests, responses, static files, uploads, auth, templates |
+| [Realtime](Realtime.md) | `AsyncWebSocket` and `AsyncEventSource` (Server-Sent Events) |
+| [Arduino-Compat](Arduino-Compat.md) | `String`, `FS`/`LittleFS`, `WiFi` stub, Arduino core shim, privileged ports |
+| [Examples](Examples.md) | Echo server, HTTP servers, full web app, self-contained demos |
+| [Integrations](Integrations.md) | Arduino sketch runner (echo and web sketches), frame-loop pattern, SDL2 |
 | [Testing](Testing.md) | Building, running tests, sanitizer runs, test helpers |
 | [Roadmap](Roadmap.md) | What is done, what is next, known limitations |
 
@@ -34,6 +39,20 @@ int main() {
 ```
 
 Link against the `ESPAsyncEmu::ESPAsyncEmu` CMake target; Asio is fetched automatically.
+
+A web server is just as short; see [ESPAsyncWebServer](ESPAsyncWebServer.md):
+
+```cpp
+#include "ESPAsyncWebServer.h"
+
+AsyncWebServer server(8080);
+
+int main() {
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest* r) { r->send(200, "text/plain", "Hello!"); });
+    server.begin();
+    for (;;) AsyncEmu::pollFor(50);
+}
+```
 
 ## Maintaining this wiki
 

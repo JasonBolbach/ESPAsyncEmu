@@ -4,26 +4,33 @@
 
 ```mermaid
 flowchart TB
-    app["Application / firmware-style code<br/>(AsyncClient, AsyncServer, AsyncUDP)"]
+    app["Application / firmware-style code"]
     subgraph lib["ESPAsyncEmu"]
+        web["ESPAsyncWebServer.h, AsyncWebSocket.h, AsyncEventSource.h<br/>src/Web*.cpp, AsyncWebSocket.cpp, AsyncEventSource.cpp"]
         tcp["ESPAsyncTCP.h<br/>src/AsyncTCP.cpp"]
         udp["ESPAsyncUDP.h<br/>src/AsyncUDP.cpp"]
         loop["AsyncEmu.h<br/>src/loop.cpp"]
-        ip["IPAddress.h"]
+        compat["IPAddress.h, WString.h, FS.h"]
     end
     asio["Asio io_context (single shared instance)"]
-    os["OS sockets / timers"]
+    os["OS sockets / timers / files"]
 
+    app --> web
     app --> tcp
     app --> udp
     app --> loop
+    web --> tcp
+    web --> compat
     tcp --> loop
     udp --> loop
     tcp --> asio
     udp --> asio
     loop --> asio
     asio --> os
+    compat --> os
 ```
+
+The web layer is built on `AsyncServer` / `AsyncClient` rather than on Asio directly, just as the real ESPAsyncWebServer sits on AsyncTCP; see [ESPAsyncWebServer](ESPAsyncWebServer.md).
 
 Public headers live in `include/` and never expose Asio types. Asio is a private dependency of the static library, so applications only see the Arduino-style API.
 
@@ -81,6 +88,8 @@ Callbacks are *copied* before being invoked, so a callback that re-registers its
 
 `AsyncServer` hands out heap-allocated clients exactly like the real library; the application owns them.
 
+The web layer repeats the idea one level up: the server owns an `AsyncWebServerRequest` per connection and deletes it when the client disconnects. WebSocket and event-stream clients *take over* the connection from the request (see [Realtime](Realtime.md#from-http-request-to-long-lived-connection)).
+
 ## Source map
 
 | File | Purpose |
@@ -88,6 +97,9 @@ Callbacks are *copied* before being invoked, so a callback that re-registers its
 | `include/AsyncEmu.h`, `src/loop.cpp` | Event loop control |
 | `include/ESPAsyncTCP.h`, `src/AsyncTCP.cpp` | `AsyncClient`, `AsyncServer` |
 | `include/ESPAsyncUDP.h`, `src/AsyncUDP.cpp` | `AsyncUDP`, `AsyncUDPPacket`, `AsyncUDPMessage` |
-| `include/IPAddress.h` | Arduino-style IPv4 address |
+| `include/ESPAsyncWebServer.h`, `src/Web*.cpp` | `AsyncWebServer`, requests, responses, handlers |
+| `include/AsyncWebSocket.h`, `src/AsyncWebSocket.cpp` | WebSocket |
+| `include/AsyncEventSource.h`, `src/AsyncEventSource.cpp` | Server-Sent Events |
+| `include/IPAddress.h`, `include/WString.h`, `include/FS.h`, `src/FS.cpp` | Arduino-style IPv4 address, `String`, file system ([Arduino-Compat](Arduino-Compat.md)) |
 | `src/AsyncEmuInternal.h` | Shared `io_context` accessor, IPAddress/Asio conversions |
 | `cmake/FetchAsio.cmake` | Fetches standalone Asio 1.30.2 |
