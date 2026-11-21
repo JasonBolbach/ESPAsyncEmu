@@ -286,26 +286,6 @@ size_t AsyncResponseStream::write(const uint8_t* data, size_t len) {
     return len;
 }
 
-size_t AsyncResponseStream::printf(const char* fmt, ...) {
-    char stack[256];
-    va_list ap;
-    va_start(ap, fmt);
-    va_list ap2;
-    va_copy(ap2, ap);
-    int n = std::vsnprintf(stack, sizeof stack, fmt, ap);
-    va_end(ap);
-    size_t written = 0;
-    if (n >= 0 && static_cast<size_t>(n) < sizeof stack) {
-        written = write(reinterpret_cast<const uint8_t*>(stack), static_cast<size_t>(n));
-    } else if (n > 0) {
-        std::vector<char> big(static_cast<size_t>(n) + 1);
-        std::vsnprintf(big.data(), big.size(), fmt, ap2);
-        written = write(reinterpret_cast<const uint8_t*>(big.data()), static_cast<size_t>(n));
-    }
-    va_end(ap2);
-    return written;
-}
-
 size_t AsyncResponseStream::_fillBuffer(uint8_t* buf, size_t maxLen) {
     size_t n = std::min(maxLen, _buf.size());
     std::memcpy(buf, _buf.data(), n);

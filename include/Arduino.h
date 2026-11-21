@@ -1,6 +1,7 @@
 // Tiny Arduino-core shim so sketches written for ESPAsyncTCP/ESPAsyncUDP can
-// run on the desktop. Provides millis/micros/delay/yield and a printf-capable
-// Serial that writes to stdout.
+// run on the desktop. Provides millis/micros/delay/yield, a printf-capable
+// Serial that writes to stdout, GPIO and ESP stubs. Include it only where you
+// want an Arduino-like environment (ArduinoJson's Print/Stream support needs it).
 //
 // delay() keeps the emulated network alive (it pumps AsyncEmu::poll() while it
 // waits), just like delay() lets the ESP's background tasks run.
@@ -15,6 +16,7 @@
 
 #include "AsyncEmu.h"
 #include "IPAddress.h"
+#include "Stream.h"
 #include "WString.h"
 
 inline uint32_t millis() {
@@ -32,6 +34,14 @@ inline uint32_t micros() {
 inline void yield() { AsyncEmu::poll(); }
 
 inline void delay(uint32_t ms) {
+    if (AsyncEmu::inCallback() && AsyncEmu::deviceLimits().warnDelayInCallback) {
+        static bool warned = false;  // once is enough
+        if (!warned) {
+            warned = true;
+            AsyncEmu::warn("delay() called inside a network callback. On the device this blocks the TCP task and trips the watchdog; "
+                           "set a flag and do the work from loop() instead.");
+        }
+    }
     uint32_t end = millis() + ms;
     do {
         AsyncEmu::poll();
@@ -40,25 +50,22 @@ inline void delay(uint32_t ms) {
     } while (true);
 }
 
-struct SerialClass {
+// Serial: writes to stdout (a '\r' is dropped so Arduino's "\r\n" line endings look normal and
+// logs stay clean when piped), flushing at every newline. Reading yields nothing.
+struct SerialClass : public Stream {
     void begin(unsigned long) {}
-    size_t print(const char* s) { return static_cast<size_t>(std::fputs(s, stdout) >= 0 ? std::char_traits<char>::length(s) : 0); }
-    size_t print(const std::string& s) { return print(s.c_str()); }
-    size_t print(int v) { return static_cast<size_t>(std::printf("%d", v)); }
-    size_t print(unsigned v) { return static_cast<size_t>(std::printf("%u", v)); }
-    size_t println(const char* s = "") { size_t n = print(s); std::putchar('\n'); std::fflush(stdout); return n + 1; }
-    size_t println(const std::string& s) { return println(s.c_str()); }
-    size_t println(int v) { size_t n = print(v); std::putchar('\n'); std::fflush(stdout); return n + 1; }
-    size_t println(unsigned v) { size_t n = print(v); std::putchar('\n'); std::fflush(stdout); return n + 1; }
-    int printf(const char* fmt, ...) __attribute__((format(printf, 2, 3))) {
-        va_list ap;
-        va_start(ap, fmt);
-        int n = std::vprintf(fmt, ap);
-        va_end(ap);
-        std::fflush(stdout);
-        return n;
+    size_t write(uint8_t c) override {
+        if (c == '\r') return 1;
+        std::putchar(c);
+        if (c == '\n') std::fflush(stdout);
+        return 1;
     }
-    void flush() { std::fflush(stdout); }
+    using Print::write;
+    int available() override { return 0; }
+    int read() override { return -1; }
+    int peek() override { return -1; }
+    void flush() override { std::fflush(stdout); }
+    explicit operator bool() const { return true; }
 };
 inline SerialClass Serial;
 

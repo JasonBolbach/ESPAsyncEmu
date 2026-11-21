@@ -20,8 +20,8 @@ MERMAID_VERSION = "11.4.1"
 MERMAID_URL = f"https://cdn.jsdelivr.net/npm/mermaid@{MERMAID_VERSION}/dist/mermaid.min.js"
 
 # Sidebar order. Any other *.md file is appended alphabetically.
-ORDER = ["Home", "Architecture", "Event-Loop", "ESPAsyncTCP", "ESPAsyncUDP", "ESPAsyncWebServer", "Realtime",
-         "Arduino-Compat", "Examples", "Integrations", "Testing", "Roadmap"]
+ORDER = ["Home", "Architecture", "Event-Loop", "ESPAsyncTCP", "ESPAsyncUDP", "ESPAsyncWebServer", "Realtime", "Json",
+         "Device-Profiles", "Arduino-Compat", "Examples", "Integrations", "Testing", "Roadmap"]
 
 
 def slug(text):

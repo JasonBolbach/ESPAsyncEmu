@@ -5,7 +5,9 @@ Desktop emulation of the ESP8266/ESP32 async networking libraries, built on stan
 - **ESPAsyncTCP**: `AsyncClient`, `AsyncServer`
 - **ESPAsyncUDP**: `AsyncUDP`, `AsyncUDPPacket`, `AsyncUDPMessage`
 - **ESPAsyncWebServer**: `AsyncWebServer` with routing, request/response objects, static files, uploads, Basic/Digest auth, templates, **WebSocket** and **Server-Sent Events**
-- Arduino-style `String`, `FS`/`LittleFS` and a `WiFi` stub, so unmodified sketches build
+- **AsyncJson** (`AsyncJsonResponse`, `AsyncCallbackJsonWebHandler`) on ArduinoJson v6/v7
+- Arduino-style `String`, `Print`/`Stream`, `FS`/`LittleFS` and a `WiFi` stub, so unmodified sketches build
+- **Device profiles**: run under ESP8266/ESP32-like limits (`ESPASYNCEMU_PROFILE=esp8266`) to catch problems that only show up on the board
 - Caller-driven event loop: call `AsyncEmu::poll()` from your own loop; all callbacks run on that thread.
 
 ## Build and test

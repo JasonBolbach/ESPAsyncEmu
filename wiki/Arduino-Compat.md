@@ -7,11 +7,12 @@ flowchart LR
     sketch["Sketch code<br/>String, LittleFS, WiFi, Serial, millis"]
     subgraph core["Library (include/)"]
         str["WString.h<br/>String"]
+        prn["Print.h, Stream.h"]
         fsh["FS.h + src/FS.cpp<br/>FS, File, LittleFS, SPIFFS"]
         ip["IPAddress.h"]
+        ard["Arduino.h<br/>Serial, millis, delay, ESP, GPIO stubs"]
     end
     subgraph shim["Arduino shim (integrations/arduino/include)"]
-        ard["Arduino.h<br/>Serial, millis, delay, ESP, GPIO stubs"]
         wifi["WiFi.h / ESP8266WiFi.h<br/>always connected, 127.0.0.1"]
         alias["AsyncTCP.h, LittleFS.h, SPIFFS.h<br/>name aliases"]
     end
@@ -20,7 +21,7 @@ flowchart LR
     shim --> core
 ```
 
-The first group (`String`, `FS`, `IPAddress`) is part of the main library because the web server API uses them. The second group is only needed to run whole sketches and lives with the [Arduino runner](Integrations.md#arduino-sketch-runner-integrationsarduino).
+The first group (`String`, `Print`, `Stream`, `FS`, `IPAddress`, and `Arduino.h` itself) is part of the main library because the web server and JSON APIs use them. The `WiFi` stub and name aliases are only needed to run whole sketches and live with the [Arduino runner](Integrations.md#arduino-sketch-runner-integrationsarduino).
 
 ## String
 
@@ -34,9 +35,23 @@ The first group (`String`, `FS`, `IPAddress`) is part of the main library becaus
 | Comparing | `equals`, `equalsIgnoreCase`, `==`, `<` (inherited) |
 | Converting | `toInt`, `toFloat`, `toDouble` |
 
+`append()` returns `String&` (needed so ArduinoJson treats it as a string destination; see [Json](Json.md)).
+
 Numbers append their **text**, like Arduino: `String("n=") + 5` is `"n=5"`, `+ 2.5` gives `"n=2.50"`. Only a `char` appends the character itself. (An early version of this class silently turned `String + int` into a raw byte; there is now a regression test.)
 
 `F()`, `PSTR()`, `FPSTR()` and `PROGMEM` are defined as no-ops.
+
+## Print, Stream and Printable
+
+`include/Print.h`, `include/Stream.h`: the Arduino base classes. `Print` provides `print`, `println`, `printf` and `write`; you implement `write(uint8_t)`. `println` ends lines with `"\r\n"` like Arduino. `Stream` adds `available`, `read`, `peek`, `readBytes`, `readString`, `readStringUntil`.
+
+| Type | Is a |
+|------|------|
+| `AsyncResponseStream` | `Print` |
+| `File` | `Stream` (so `Print` too) |
+| `Serial` | `Stream` (writes to stdout, drops `'\r'`, flushes at each newline) |
+
+This is what lets `serializeJson(doc, *response)`, `serializeJson(doc, file)` and `deserializeJson(doc, file)` work unchanged.
 
 ## File system
 
@@ -62,10 +77,10 @@ Construct your own with `FS myFs("/some/host/dir")`.
 
 ## Arduino core shim
 
-`integrations/arduino/include/Arduino.h` (see [Integrations](Integrations.md)):
+`include/Arduino.h` (part of the core library; include it where you want an Arduino-like environment):
 
 - `millis()`, `micros()`, `delay()` (which keeps the network pumping), `yield()`
-- `Serial.begin/print/println/printf/flush` writing to stdout, flushed per line so logs appear when piped
+- `Serial` (a `Stream`): `begin`, `print`, `println`, `printf`, `flush` writing to stdout, flushed per line so logs appear when piped
 - `pinMode`, `digitalWrite` (prints `[gpio] pin N -> HIGH`), `digitalRead`, `analogRead` stubs
 - `ESP.getFreeHeap()`, `ESP.getChipId()`, `ESP.restart()` (exits)
 

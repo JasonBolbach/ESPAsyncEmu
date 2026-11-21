@@ -12,7 +12,9 @@ Desktop emulation of the ESP8266/ESP32 async networking libraries (ESPAsyncTCP, 
 | [ESPAsyncUDP](ESPAsyncUDP.md) | `AsyncUDP` / `AsyncUDPPacket` / `AsyncUDPMessage` |
 | [ESPAsyncWebServer](ESPAsyncWebServer.md) | `AsyncWebServer`: routing, requests, responses, static files, uploads, auth, templates |
 | [Realtime](Realtime.md) | `AsyncWebSocket` and `AsyncEventSource` (Server-Sent Events) |
-| [Arduino-Compat](Arduino-Compat.md) | `String`, `FS`/`LittleFS`, `WiFi` stub, Arduino core shim, privileged ports |
+| [Json](Json.md) | `AsyncJsonResponse`, `AsyncCallbackJsonWebHandler` (ArduinoJson v6/v7) |
+| [Device-Profiles](Device-Profiles.md) | Run under ESP8266 / ESP32-like limits: send buffer, connection cap, strict headers, watchdog |
+| [Arduino-Compat](Arduino-Compat.md) | `String`, `Print`/`Stream`, `FS`/`LittleFS`, `WiFi` stub, Arduino core shim, privileged ports |
 | [Examples](Examples.md) | Echo server, HTTP servers, full web app, self-contained demos |
 | [Integrations](Integrations.md) | Arduino sketch runner (echo and web sketches), frame-loop pattern, SDL2 |
 | [Testing](Testing.md) | Building, running tests, sanitizer runs, test helpers |

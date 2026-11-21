@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 
+#include "Stream.h"
 #include "WString.h"
 
 namespace fs {
@@ -23,20 +24,19 @@ enum SeekMode { SeekSet = 0, SeekCur = 1, SeekEnd = 2 };
 
 class FS;
 
-class File {
+class File : public Stream {
 public:
     File() = default;
     explicit operator bool() const { return static_cast<bool>(_i); }
 
     size_t read(uint8_t* buf, size_t size);
-    int read();
-    int peek();
-    size_t available();
-    size_t write(const uint8_t* buf, size_t size);
-    size_t write(uint8_t b) { return write(&b, 1); }
-    size_t print(const char* s);
-    size_t println(const char* s = "");
-    void flush();
+    int read() override;
+    int peek() override;
+    int available() override;
+    size_t write(const uint8_t* buf, size_t size) override;
+    size_t write(uint8_t b) override { return write(&b, 1); }
+    using Print::write;
+    void flush() override;
     bool seek(uint32_t pos, SeekMode mode = SeekSet);
     size_t position() const;
     size_t size() const;
@@ -47,7 +47,6 @@ public:
     bool isDirectory() const;
     File openNextFile();       // iterate a directory (invalid File at the end)
     time_t getLastWrite() const;
-    String readString();
 
     struct Impl;
 

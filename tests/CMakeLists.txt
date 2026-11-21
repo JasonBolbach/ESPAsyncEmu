@@ -23,3 +23,27 @@ add_test(NAME realtime_test COMMAND realtime_test)
 add_executable(compat_test compat_test.cpp)
 target_link_libraries(compat_test PRIVATE ESPAsyncEmu::ESPAsyncEmu)
 add_test(NAME compat_test COMMAND compat_test)
+
+add_executable(limits_test limits_test.cpp)
+target_link_libraries(limits_test PRIVATE ESPAsyncEmu::ESPAsyncEmu)
+add_test(NAME limits_test COMMAND limits_test)
+
+# The same web/realtime suites again under device limits: tiny send buffers exercise
+# the ack-driven flow control, strict headers check that the stock handlers register
+# what they need, and the connection cap must not trip on normal use.
+foreach(profile esp8266 esp8266-hb esp32)
+    foreach(suite web_test realtime_test)
+        add_test(NAME ${suite}_${profile} COMMAND ${suite})
+        set_tests_properties(${suite}_${profile} PROPERTIES ENVIRONMENT "ESPASYNCEMU_PROFILE=${profile}")
+    endforeach()
+endforeach()
+
+if(ESPASYNCEMU_ENABLE_JSON)
+    add_executable(json_test json_test.cpp)
+    target_link_libraries(json_test PRIVATE ESPAsyncEmu::ESPAsyncEmu)
+    add_test(NAME json_test COMMAND json_test)
+    foreach(profile esp8266 esp32)
+        add_test(NAME json_test_${profile} COMMAND json_test)
+        set_tests_properties(json_test_${profile} PROPERTIES ENVIRONMENT "ESPASYNCEMU_PROFILE=${profile}")
+    endforeach()
+endif()

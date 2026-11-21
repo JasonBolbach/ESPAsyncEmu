@@ -23,8 +23,8 @@ The rule is the same everywhere: **call `AsyncEmu::poll()` regularly from the ho
 
 Lets an Arduino-style sketch (`setup()` / `loop()`) run on the desktop.
 
-- **`include/Arduino.h`**: minimal shim: `millis()`, `micros()`, `delay()`, `yield()`, a `Serial` object that prints to stdout (`print`, `println`, `printf`), GPIO stubs and `ESP.getFreeHeap()`. Together with `WiFi.h`, `ESP8266WiFi.h`, `AsyncTCP.h`, `LittleFS.h` and `SPIFFS.h` this lets sketches written for a real board compile unchanged; see [Arduino-Compat](Arduino-Compat.md).
-- **`runner.cpp`**: provides `main()`: runs `setup()` once, then `loop()` followed by `AsyncEmu::poll()` forever. `--run-for <ms>` makes it exit cleanly (used by the smoke tests); `--port-offset <n>` shifts listening ports below 1024 (so `AsyncWebServer server(80)` listens on 8080 with `--port-offset 8000`).
+- **`Arduino.h`** (in the core `include/` directory since it is shared with [AsyncJson](Json.md)): minimal shim: `millis()`, `micros()`, `delay()`, `yield()`, a `Serial` object that prints to stdout (`print`, `println`, `printf`), GPIO stubs and `ESP.getFreeHeap()`. Together with `WiFi.h`, `ESP8266WiFi.h`, `AsyncTCP.h`, `LittleFS.h` and `SPIFFS.h` this lets sketches written for a real board compile unchanged; see [Arduino-Compat](Arduino-Compat.md).
+- **`runner.cpp`**: provides `main()`: runs `setup()` once, then `loop()` followed by `AsyncEmu::poll()` forever. `--run-for <ms>` makes it exit cleanly (used by the smoke tests); `--port-offset <n>` shifts listening ports below 1024 (so `AsyncWebServer server(80)` listens on 8080 with `--port-offset 8000`); `--profile <name>` runs under [device limits](Device-Profiles.md) (`esp8266`, `esp8266-hb`, `esp32`), which also makes `delay()` warn when called inside a network callback.
 - **`espasyncemu_add_sketch(target sketch.cpp ...)`**: CMake helper that links a sketch with the shim and runner.
 
 ```mermaid
@@ -52,7 +52,8 @@ printf hi | nc -u -w1 127.0.0.1 7007       # UDP
 `sketches/web_sketch.cpp` is written the way a real ESP8266/ESP32 sketch would be: `WiFi.begin()`, an `AsyncWebServer server(80)`, a PROGMEM page with `%PLACEHOLDER%` templating, routes with query parameters, a WebSocket and Server-Sent Events, `server.onNotFound(...)`, all driven from `setup()` / `loop()`.
 
 ```sh
-./build/integrations/arduino/web_sketch --port-offset 8000     # server(80) -> http://127.0.0.1:8080/
+./build/integrations/arduino/web_sketch --port-offset 8000                    # server(80) -> http://127.0.0.1:8080/
+./build/integrations/arduino/web_sketch --port-offset 8000 --profile esp8266  # same, under ESP8266-like limits
 ```
 
 Not provided: GPIO behaviour beyond logging, `WiFiClient` networking, `Ticker`, etc. Add what a sketch needs to `Arduino.h`.

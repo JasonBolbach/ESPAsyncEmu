@@ -45,6 +45,10 @@ public:
     bool concat(const String& s) { append(s); return true; }
     bool concat(const char* s) { if (s) append(s); return true; }
     bool concat(char c) { push_back(c); return true; }
+    // append() returning String& (not std::string&) lets ArduinoJson recognise this class as a
+    // std::string-like destination, so serializeJson(doc, aString) works.
+    using std::string::append;
+    String& append(const char* s) { std::string::append(s ? s : ""); return *this; }
     String& operator+=(const String& s) { append(s); return *this; }
     String& operator+=(const char* s) { if (s) append(s); return *this; }
     String& operator+=(char c) { push_back(c); return *this; }

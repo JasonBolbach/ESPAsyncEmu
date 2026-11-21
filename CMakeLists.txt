@@ -5,10 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ESPASYNCEMU_BUILD_TESTS "Build ESPAsyncEmu tests" ${PROJECT_IS_TOP_LEVEL})
+option(ESPASYNCEMU_ENABLE_JSON "Fetch ArduinoJson and enable AsyncJson.h" ON)
 option(ESPASYNCEMU_BUILD_EXAMPLES "Build examples and integrations" ${PROJECT_IS_TOP_LEVEL})
 
 # --- Asio (standalone, header-only, Boost license) -------------------------
 include(cmake/FetchAsio.cmake)
+if(ESPASYNCEMU_ENABLE_JSON)
+    include(cmake/FetchArduinoJson.cmake)
+endif()
 
 # --- Library ---------------------------------------------------------------
 add_library(ESPAsyncEmu STATIC
@@ -29,6 +33,10 @@ target_include_directories(ESPAsyncEmu
     PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(ESPAsyncEmu PRIVATE asio::asio)
+if(ESPASYNCEMU_ENABLE_JSON)
+    target_link_libraries(ESPAsyncEmu PUBLIC ESPAsyncEmu::ArduinoJson)
+    target_compile_definitions(ESPAsyncEmu PUBLIC ESPASYNCEMU_HAS_ARDUINOJSON=1)
+endif()
 
 if(WIN32)
     # Winsock, needed by Asio; _WIN32_WINNT silences Asio's version warning.

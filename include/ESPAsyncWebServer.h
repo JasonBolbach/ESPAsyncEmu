@@ -30,6 +30,7 @@
 
 #include "ESPAsyncTCP.h"
 #include "FS.h"
+#include "Print.h"
 #include "WString.h"
 
 typedef enum {
@@ -223,27 +224,19 @@ private:
     size_t _filled = 0;
 };
 
-// Print-like response: write into it, then request->send(response).
-class AsyncResponseStream : public AsyncAbstractResponse {
+// A Print: write into it (print, printf, serializeJson(doc, *stream), ...), then request->send(stream).
+class AsyncResponseStream : public Print, public AsyncAbstractResponse {
 public:
     AsyncResponseStream(const String& contentType, size_t bufferSize = 1460);
     bool _sourceValid() const override { return true; }
     size_t _fillBuffer(uint8_t* buf, size_t maxLen) override;
 
-    size_t write(const uint8_t* data, size_t len);
-    size_t write(uint8_t b) { return write(&b, 1); }
-    size_t print(const String& s) { return write(reinterpret_cast<const uint8_t*>(s.data()), s.size()); }
-    size_t print(const char* s) { return s ? write(reinterpret_cast<const uint8_t*>(s), std::char_traits<char>::length(s)) : 0; }
-    size_t print(int v) { return print(String(v)); }
-    size_t print(unsigned v) { return print(String(v)); }
-    size_t print(long v) { return print(String(v)); }
-    size_t print(double v) { return print(String(v)); }
-    size_t println(const String& s = String()) { size_t n = print(s); n += print("\r\n"); return n; }
-    size_t printf(const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+    size_t write(const uint8_t* data, size_t len) override;
+    size_t write(uint8_t b) override { return write(&b, 1); }
+    using Print::write;
 
 private:
     std::string _buf;
-    size_t _pos = 0;
 };
 
 // A file from an FS. A ".gz" path is sent with Content-Encoding: gzip.
@@ -301,7 +294,10 @@ public:
     void requestAuthentication(const char* realm = nullptr, bool isDigest = true);
 
     void setHandler(AsyncWebHandler* handler) { _handler = handler; }
-    void addInterestingHeader(const String&) {}  // all headers are kept in the emulation
+    // Handlers call this (in canHandle) for the headers they need. With the default desktop
+    // limits every header is kept anyway; with DeviceLimits::strictHeaders (esp8266 / esp32
+    // profiles) only the registered ones survive - "ANY" keeps all, as stock routes do.
+    void addInterestingHeader(const String& name);
     void onDisconnect(ArDisconnectHandler fn) { _onDisconnectfn = std::move(fn); }
 
     // ---- responding ----
@@ -388,6 +384,7 @@ private:
     RequestedConnectionType _reqconntype = RCT_HTTP;
 
     std::deque<AsyncWebHeader> _headers;
+    std::vector<String> _interesting;
     std::deque<AsyncWebParameter> _params;
     std::vector<String> _pathParams;
     std::string _bodyBuf;  // urlencoded bodies
@@ -412,6 +409,7 @@ private:
     void _mpFinishItem();
     void _parseQuery(const std::string& q, bool post);
     void _handleRequest();
+    void _removeNotInterestingHeaders();
     void _fail(int code);
     bool _bodyHandlerActive() const;
 };

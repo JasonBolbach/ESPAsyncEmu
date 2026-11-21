@@ -166,15 +166,13 @@ int File::peek() {
     return c == EOF ? -1 : c;
 }
 
-size_t File::available() {
+int File::available() {
     if (!_i || !_i->fp) return 0;
     size_t sz = size(), pos = position();
-    return sz > pos ? sz - pos : 0;
+    return sz > pos ? static_cast<int>(sz - pos) : 0;
 }
 
 size_t File::write(const uint8_t* buf, size_t size) { return (_i && _i->fp) ? std::fwrite(buf, 1, size, _i->fp) : 0; }
-size_t File::print(const char* s) { return s ? write(reinterpret_cast<const uint8_t*>(s), std::char_traits<char>::length(s)) : 0; }
-size_t File::println(const char* s) { size_t n = print(s); n += write('\n'); return n; }
 void File::flush() { if (_i && _i->fp) std::fflush(_i->fp); }
 
 bool File::seek(uint32_t pos, SeekMode mode) {
@@ -214,14 +212,6 @@ time_t File::getLastWrite() const {
     auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
         t - stdfs::file_time_type::clock::now() + std::chrono::system_clock::now());
     return std::chrono::system_clock::to_time_t(sctp);
-}
-
-String File::readString() {
-    String s;
-    uint8_t b[512];
-    size_t n;
-    while ((n = read(b, sizeof b)) > 0) s.append(reinterpret_cast<char*>(b), n);
-    return s;
 }
 
 }  // namespace fs

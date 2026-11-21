@@ -9,6 +9,19 @@ namespace AsyncEmu {
 // The single shared Asio context all emulated sockets/timers live on.
 asio::io_context& context();
 
+// Wraps every invocation of a user callback: tracks "inside a callback" (for the
+// watchdog and inCallback()) and measures how long the outermost callback ran.
+class CallbackScope {
+public:
+    CallbackScope();
+    ~CallbackScope();
+    CallbackScope(const CallbackScope&) = delete;
+    CallbackScope& operator=(const CallbackScope&) = delete;
+};
+
+// Number of live TCP connections (for DeviceLimits::maxConnections).
+unsigned& activeConnections();
+
 // Applies the port offset (see AsyncEmu::setPortOffset) to a privileged listening port.
 uint16_t mapPort(uint16_t port);
 

@@ -13,7 +13,6 @@ using namespace AsyncEmu::web;
 namespace {
 const String kEmpty;
 constexpr size_t kMaxLine = 16 * 1024;       // request line / header line
-constexpr size_t kMaxFormBody = 1024 * 1024;  // buffered urlencoded bodies
 constexpr size_t kMaxMultipartField = 64 * 1024;
 }  // namespace
 
@@ -176,9 +175,27 @@ void AsyncWebServerRequest::_parseHeaderLine(const std::string& line) {
     }
 }
 
+void AsyncWebServerRequest::addInterestingHeader(const String& name) {
+    for (auto& h : _interesting)
+        if (h.equalsIgnoreCase(name)) return;
+    _interesting.push_back(name);
+}
+
+void AsyncWebServerRequest::_removeNotInterestingHeaders() {
+    if (!AsyncEmu::deviceLimits().strictHeaders) return;
+    for (auto& h : _interesting)
+        if (h.equalsIgnoreCase("ANY")) return;
+    for (auto it = _headers.begin(); it != _headers.end();) {
+        bool keep = false;
+        for (auto& h : _interesting) keep = keep || h.equalsIgnoreCase(it->name());
+        it = keep ? it + 1 : _headers.erase(it);
+    }
+}
+
 void AsyncWebServerRequest::_headersComplete() {
     _server->_rewriteRequest(this);
     _server->_attachHandler(this);
+    _removeNotInterestingHeaders();
     if (_contentLength == 0) {
         _parseState = PARSE_REQ_END;
         _handleRequest();
@@ -200,7 +217,7 @@ void AsyncWebServerRequest::_feedBody(const uint8_t* p, size_t n) {
     if (_isMultipart) {
         _mpFeed(p, n);
     } else if (_isPlainPost) {
-        if (_bodyBuf.size() + n > kMaxFormBody) { _fail(413); return; }
+        if (_bodyBuf.size() + n > AsyncEmu::deviceLimits().maxFormBodySize) { _fail(413); return; }
         _bodyBuf.append(reinterpret_cast<const char*>(p), n);
     } else if (_handler) {
         _handler->handleBody(this, const_cast<uint8_t*>(p), n, _parsedLength, _contentLength);

@@ -6,7 +6,7 @@ Sources in `examples/`. Built by default when ESPAsyncEmu is the top-level proje
 |---------|------|---------------|
 | `tcp_echo_server [port]` | long-running | `AsyncServer` + per-client `onData`/`onDisconnect`, `delete c` ownership, rx timeout. Default port 7007 |
 | `http_hello_server [port]` | long-running | A tiny HTTP/1.0 server on raw `AsyncServer`: per-connection state via the `arg` pointer, graceful `close()` after `write()`. Default port 8080. Preview of what the future web server layer will wrap |
-| `web_server [port] [site-dir]` | long-running | A full web app on `AsyncWebServer`: static site with a browser front end (`examples/web_data`), JSON API, form POST, multipart upload to a file system, Basic and Digest auth, WebSocket chat, Server-Sent Events. Default port 8080 |
+| `web_server [port] [site-dir]` | long-running | A full web app on `AsyncWebServer`: static site with a browser front end (`examples/web_data`), JSON API (`AsyncJsonResponse`, `AsyncCallbackJsonWebHandler`), form POST, multipart upload to a file system, Basic and Digest auth, WebSocket chat, Server-Sent Events. Default port 8080 |
 | `tcp_client_demo` | self-contained, ctest | Server and client in one process over loopback, one poll loop |
 | `udp_ping_pong` | self-contained, ctest | `AsyncUDP` request/response using `packet.print()` to reply |
 
@@ -32,7 +32,7 @@ flowchart LR
     browser["Browser<br/>index.html, app.js"]
     subgraph srv["web_server"]
         static["serveStatic /<br/>(LittleFS: examples/web_data)"]
-        api["/api/status, /api/echo, /api/files"]
+        api["/api/status, /api/sum (JSON), /api/echo, /api/files"]
         upl["/upload (multipart)"]
         adm["/admin (Basic), /admin-digest"]
         ws["WebSocket /ws"]
@@ -59,6 +59,7 @@ Try the API from a terminal:
 ```sh
 curl http://127.0.0.1:8080/api/status
 curl -d "name=Ada&color=blue" http://127.0.0.1:8080/api/echo
+curl -H "Content-Type: application/json" -d '{"numbers":[1,2,3]}' http://127.0.0.1:8080/api/sum
 curl -F "file=@photo.jpg" http://127.0.0.1:8080/upload
 curl -u admin:secret http://127.0.0.1:8080/admin
 curl --digest -u admin:secret http://127.0.0.1:8080/admin-digest

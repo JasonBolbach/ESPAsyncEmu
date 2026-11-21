@@ -94,7 +94,7 @@ struct AsyncUDP::Impl : std::enable_shared_from_this<AsyncUDP::Impl> {
                                fromAsio(self->sender.address()), self->sender.port(), self->multicast);
             auto cb = self->cb;
             void* arg = self->cbArg;
-            if (cb && self->owner) cb(arg, pkt);
+            if (cb && self->owner) { CallbackScope scope; cb(arg, pkt); }
             if (!self->owner || self->gen != g) return;
             self->startRecv();
         });

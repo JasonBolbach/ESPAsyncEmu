@@ -60,7 +60,10 @@ void AsyncEventSourceClient::close() {
 
 void AsyncEventSourceClient::write(const char* message, size_t len) {
     if (!_client || !connected()) return;
-    if (_queue.size() >= SSE_MAX_QUEUED_MESSAGES) return;  // like the device: drop when the queue is full
+    if (_queue.size() >= SSE_MAX_QUEUED_MESSAGES) {  // like the device: drop when the queue is full
+        AsyncEmu::warn("EventSource client: message queue full (" + std::to_string(SSE_MAX_QUEUED_MESSAGES) + "), message dropped");
+        return;
+    }
     _queue.emplace_back(message, len);
     _runQueue();
 }
@@ -132,6 +135,7 @@ void AsyncEventSource::_handleDisconnect(AsyncEventSourceClient* client) {
 
 bool AsyncEventSource::canHandle(AsyncWebServerRequest* request) {
     if (request->method() != HTTP_GET || !request->url().equals(_url) || !request->isExpectedRequestedConnType(RCT_EVENT)) return false;
+    request->addInterestingHeader("Last-Event-ID");
     return true;
 }
 

@@ -1,6 +1,6 @@
 # ESPAsyncWebServer
 
-`include/ESPAsyncWebServer.h`, with `src/WebRequest.cpp`, `src/WebResponse.cpp`, `src/WebServer.cpp`, `src/WebUtil.cpp`. A desktop emulation of me-no-dev/ESPAsyncWebServer with the same public API: routes, request and response objects, handlers, static files, uploads, authentication, rewrites and templates. WebSocket and Server-Sent Events are on their own page: [Realtime](Realtime.md).
+`include/ESPAsyncWebServer.h`, with `src/WebRequest.cpp`, `src/WebResponse.cpp`, `src/WebServer.cpp`, `src/WebUtil.cpp`. A desktop emulation of me-no-dev/ESPAsyncWebServer with the same public API: routes, request and response objects, handlers, static files, uploads, authentication, rewrites and templates. WebSocket and Server-Sent Events are on their own page: [Realtime](Realtime.md), JSON on [Json](Json.md), and device-like limits on [Device-Profiles](Device-Profiles.md).
 
 It is built on this project's own [AsyncServer / AsyncClient](ESPAsyncTCP.md), exactly as the real library sits on AsyncTCP, so everything runs inside `AsyncEmu::poll()` on the caller's thread.
 
@@ -273,13 +273,13 @@ When an `AsyncWebServer` is destroyed it closes its live connections and frees t
 
 | Area | Emulation |
 |------|-----------|
-| Headers | **All** request headers are stored and readable. The device only keeps a few unless you call `addInterestingHeader()`, which is a no-op here, so a sketch that forgets it will work on the desktop but not on the device |
+| Headers | **All** request headers are kept by default. With the esp8266/esp32 [device profiles](Device-Profiles.md) (or `strictHeaders`) only "interesting" headers survive, as on the device: stock routes register `ANY`, so only custom `AsyncWebHandler`s that forget `addInterestingHeader()` are affected |
 | `addHandler` / `addRewrite` | not owning (see above) |
 | Static templates | only text-like content types |
 | Request bodies | `Transfer-Encoding: chunked` request bodies are not supported (use `Content-Length`) |
 | Digest auth | stateless, nonce not validated against issued values |
-| JSON | `AsyncJsonResponse` / `AsyncCallbackJsonWebHandler` (ArduinoJson) are not provided |
-| Extras | `AsyncWebServer::port()`, `setRequestTimeout()` |
+| JSON | provided, see [Json](Json.md) |
+| Extras | `AsyncWebServer::port()`, `setRequestTimeout()`, [device limits](Device-Profiles.md) |
 | Not supported | range requests (the real library sends `Accept-Ranges: none` too), keep-alive, HTTPS |
 
 Tests: `tests/web_test.cpp` (see [Testing](Testing.md)).

@@ -18,7 +18,7 @@ enum : uint8_t {
     ST_LAST_ACK = 9, ST_TIME_WAIT = 10
 };
 
-constexpr size_t kSndBuf = 5744;     // send buffer size (matches ESP32 TCP_SND_BUF)
+size_t sndBuf() { return deviceLimits().sendBufferSize; }  // per-connection TCP send buffer
 constexpr unsigned kPollMs = 500;    // lwip coarse timer
 
 int8_t mapError(const error_code& ec) {
@@ -48,6 +48,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
     uint8_t st = ST_CLOSED;
     uint32_t gen = 0;
     bool closing = false;  // graceful close requested, waiting for writes to drain
+    bool counted = false;  // accepted by an AsyncServer: counts towards DeviceLimits::maxConnections
     std::string queued;    // add()ed but not yet send()ed
     size_t inflight = 0;   // handed to Asio, not yet written
     std::array<char, 4096> rx;
@@ -113,7 +114,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
         uint32_t g = gen;
         auto cb = connectCb;
         void* a = connectArg;
-        if (cb && owner) cb(a, owner);
+        if (cb && owner) { CallbackScope scope; cb(a, owner); }
         if (!owner || gen != g) return;
         start();
     }
@@ -150,7 +151,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
             self->armRx();
             auto cb = self->dataCb;
             void* a = self->dataArg;
-            if (cb && self->owner) cb(a, self->owner, self->rx.data(), n);
+            if (cb && self->owner) { CallbackScope scope; cb(a, self->owner, self->rx.data(), n); }
             if (!self->owner || self->gen != g || self->closing) return;
             self->startRead();
         });
@@ -168,7 +169,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
             auto cb = self->timeoutCb;
             void* a = self->timeoutArg;
             uint32_t elapsed = nowMs() - self->lastRx;
-            if (cb && self->owner) cb(a, self->owner, elapsed);
+            if (cb && self->owner) { CallbackScope scope; cb(a, self->owner, elapsed); }
             if (!self->owner || self->gen != g) return;
             self->close(false);  // like the real library, an rx timeout closes the connection
         });
@@ -184,7 +185,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
             if (ec || g != self->gen || self->st != ST_ESTABLISHED) return;
             auto cb = self->pollCb;
             void* a = self->pollArg;
-            if (cb && self->owner) cb(a, self->owner);
+            if (cb && self->owner) { CallbackScope scope; cb(a, self->owner); }
             if (!self->owner || self->gen != g) return;
             self->armPoll();
         });
@@ -194,7 +195,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
     size_t space() const {
         if (st != ST_ESTABLISHED || closing) return 0;
         size_t used = queued.size() + inflight;
-        return used >= kSndBuf ? 0 : kSndBuf - used;
+        return used >= sndBuf() ? 0 : sndBuf() - used;
     }
 
     bool send() {
@@ -210,7 +211,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
             self->inflight -= n;
             auto cb = self->ackCb;
             void* a = self->ackArg;
-            if (cb && self->owner) cb(a, self->owner, n, nowMs() - t0);
+            if (cb && self->owner) { CallbackScope scope; cb(a, self->owner, n, nowMs() - t0); }
             if (!self->owner || self->gen != g) return;
             if (self->closing && self->inflight == 0 && self->queued.empty()) self->disconnected();
         });
@@ -238,6 +239,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
         ++gen;
         st = ST_CLOSED;
         closing = false;
+        if (counted) { counted = false; --activeConnections(); }
         queued.clear();
         inflight = 0;
         error_code ec;
@@ -256,7 +258,7 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
         auto self = shared_from_this();
         auto cb = disconnectCb;
         void* a = disconnectArg;
-        if (cb && owner) cb(a, owner);
+        if (cb && owner) { CallbackScope scope; cb(a, owner); }
     }
 
     void fail(int8_t err, bool rst = false) {
@@ -264,10 +266,10 @@ struct AsyncClient::Impl : std::enable_shared_from_this<AsyncClient::Impl> {
         auto self = shared_from_this();
         auto ecb = errorCb;
         void* ea = errorArg;
-        if (ecb && owner) ecb(ea, owner, err);
+        if (ecb && owner) { CallbackScope scope; ecb(ea, owner, err); }
         auto dcb = disconnectCb;
         void* da = disconnectArg;
-        if (dcb && owner) dcb(da, owner);
+        if (dcb && owner) { CallbackScope scope; dcb(da, owner); }
     }
 };
 
@@ -445,14 +447,22 @@ struct AsyncServer::Impl : std::enable_shared_from_this<AsyncServer::Impl> {
     }
 
     void handleClient(tcp::socket&& sock) {
+        unsigned limit = deviceLimits().maxConnections;
+        if (limit && activeConnections() >= limit) {
+            warn("connection from a client refused: device limit of " + std::to_string(limit) +
+                 " simultaneous server connections reached (DeviceLimits::maxConnections)");
+            return;  // the socket is closed on scope exit, like a full PCB table
+        }
         auto ci = std::make_shared<AsyncClient::Impl>(std::move(sock));
         ci->noDelay = noDelay;
+        ci->counted = true;
+        ++activeConnections();
         ci->establish();
         auto* c = new AsyncClient(ci);
         auto cb = clientCb;
         void* a = clientArg;
         if (!cb) { delete c; return; }
-        cb(a, c);
+        { CallbackScope scope; cb(a, c); }
         // The application may have deleted the client inside the callback.
         if (ci->owner) ci->start();
     }

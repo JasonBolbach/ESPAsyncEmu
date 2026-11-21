@@ -7,6 +7,7 @@
 #pragma once
 #include <cstddef>
 #include <functional>
+#include <string>
 
 namespace AsyncEmu {
 
@@ -36,5 +37,42 @@ void reset();
 // Example: setPortOffset(8000) makes server(80) listen on 8080.
 void setPortOffset(unsigned offset);
 unsigned portOffset();
+
+// ---------------------------------------------------------------------------
+// Device limits ("strict mode")
+//
+// A desktop is far more generous than an ESP. These limits let you run the same
+// code under constraints that resemble the real chips, so problems show up on
+// the desktop instead of on the board. Everything defaults to the permissive
+// "desktop" profile. See wiki/Device-Profiles.md. The numbers in the esp8266 /
+// esp32 profiles are approximations of common default configurations.
+// ---------------------------------------------------------------------------
+struct DeviceLimits {
+    size_t sendBufferSize = 5744;         // per-connection TCP send buffer (AsyncClient::space())
+    unsigned maxConnections = 0;          // simultaneous TCP connections, 0 = unlimited; extra ones are dropped
+    bool strictHeaders = false;           // AsyncWebServer keeps only "interesting" request headers
+    size_t maxFormBodySize = 1024 * 1024;  // largest urlencoded request body AsyncWebServer will buffer
+    unsigned watchdogMs = 0;              // a network callback running longer than this is reported, 0 = off
+    bool abortOnWatchdog = false;         // abort() instead of just warning (like the chip resetting)
+    bool warnDelayInCallback = false;     // the Arduino shim's delay() warns when called inside a callback
+};
+
+const DeviceLimits& deviceLimits();
+void setDeviceLimits(const DeviceLimits& limits);
+
+// Selects a preset: "desktop", "esp8266" (default lwIP variant), "esp8266-hb"
+// (lwIP higher bandwidth) or "esp32". Returns false for an unknown name.
+// The initial profile comes from the ESPASYNCEMU_PROFILE environment variable.
+bool setDeviceProfile(const char* name);
+DeviceLimits deviceProfile(const char* name, bool* known = nullptr);
+
+// True while a user callback (onData, onClient, onPacket, post()ed function, ...)
+// is running. On a device these run in the network task, so blocking there is a bug.
+bool inCallback();
+
+// Diagnostics from the emulation (watchdog, dropped connections, overflowing queues, ...)
+// go to stderr unless a handler is installed (handy in tests).
+void setWarningHandler(std::function<void(const std::string&)> handler);
+void warn(const std::string& message);
 
 }  // namespace AsyncEmu

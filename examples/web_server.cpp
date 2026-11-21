@@ -10,6 +10,9 @@
 #include <cstdlib>
 
 #include "ESPAsyncWebServer.h"
+#ifdef ESPASYNCEMU_HAS_ARDUINOJSON
+#include "AsyncJson.h"
+#endif
 
 #ifndef WEB_DATA_DIR
 #define WEB_DATA_DIR "examples/web_data"
@@ -62,12 +65,40 @@ int main(int argc, char** argv) {
     server.addHandler(&events);
 
     // ---- JSON API ----
+#ifdef ESPASYNCEMU_HAS_ARDUINOJSON
+    server.on("/api/status", HTTP_GET, [&](AsyncWebServerRequest* request) {
+        AsyncJsonResponse* response = new AsyncJsonResponse();
+        JsonVariant& root = response->getRoot();
+        root["uptime_s"] = static_cast<long>(uptimeSeconds());
+        root["websocket_clients"] = static_cast<unsigned>(ws.count());
+        root["event_clients"] = static_cast<unsigned>(events.count());
+        root["your_ip"] = request->client()->remoteIP().toString();
+        response->setLength();
+        request->send(response);
+    });
+
+    // POST {"numbers":[1,2,3]} -> {"count":3,"sum":6}  (Content-Type: application/json)
+    server.addHandler(new AsyncCallbackJsonWebHandler("/api/sum", [](AsyncWebServerRequest* request, JsonVariant& json) {
+        long sum = 0;
+        size_t count = 0;
+        for (JsonVariant n : json["numbers"].as<JsonArray>()) {
+            sum += n.as<long>();
+            ++count;
+        }
+        AsyncJsonResponse* response = new AsyncJsonResponse();
+        response->getRoot()["count"] = count;
+        response->getRoot()["sum"] = sum;
+        response->setLength();
+        request->send(response);
+    }));
+#else
     server.on("/api/status", HTTP_GET, [&](AsyncWebServerRequest* request) {
         String json = String("{\"uptime_s\":") + uptimeSeconds() + ",\"websocket_clients\":" + static_cast<unsigned>(ws.count()) +
                       ",\"event_clients\":" + static_cast<unsigned>(events.count()) + ",\"your_ip\":\"" +
                       request->client()->remoteIP().toString() + "\"}";
         request->send(200, "application/json", json);
     });
+#endif
 
     server.on("/api/echo", HTTP_POST, [](AsyncWebServerRequest* request) {
         String out = "Received form fields:\n";

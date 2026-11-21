@@ -41,6 +41,7 @@ bool AsyncCallbackWebHandler::canHandle(AsyncWebServerRequest* request) {
     } else if (_uri.length() && (_uri != request->url() && !request->url().startsWith(_uri + "/"))) {
         return false;
     }
+    request->addInterestingHeader("ANY");
     return true;
 }
 
@@ -121,7 +122,10 @@ bool AsyncStaticWebHandler::canHandle(AsyncWebServerRequest* request) {
         return false;
     String path;
     bool gz;
-    return _getFile(request, path, gz);
+    if (!_getFile(request, path, gz)) return false;
+    request->addInterestingHeader("If-Modified-Since");
+    request->addInterestingHeader("If-None-Match");
+    return true;
 }
 
 void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest* request) {
@@ -294,6 +298,7 @@ void AsyncWebServer::_attachHandler(AsyncWebServerRequest* request) {
             return;
         }
     }
+    request->addInterestingHeader("ANY");
     request->setHandler(_catchAllHandler.get());
 }
 

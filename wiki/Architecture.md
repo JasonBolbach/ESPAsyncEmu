@@ -90,6 +90,10 @@ Callbacks are *copied* before being invoked, so a callback that re-registers its
 
 The web layer repeats the idea one level up: the server owns an `AsyncWebServerRequest` per connection and deletes it when the client disconnects. WebSocket and event-stream clients *take over* the connection from the request (see [Realtime](Realtime.md#from-http-request-to-long-lived-connection)).
 
+## Device limits
+
+Every user callback is invoked inside a small scope object (`CallbackScope`, `src/AsyncEmuInternal.h`). It tracks "inside a callback" and times the outermost callback, which is how the [watchdog](Device-Profiles.md#watchdog) and the `delay()` warning work. The other limits are read where they apply: the send buffer in `AsyncClient::space()`, the connection cap in `AsyncServer`'s accept path, and strict headers and the form body limit in the web request parser.
+
 ## Source map
 
 | File | Purpose |
@@ -100,6 +104,7 @@ The web layer repeats the idea one level up: the server owns an `AsyncWebServerR
 | `include/ESPAsyncWebServer.h`, `src/Web*.cpp` | `AsyncWebServer`, requests, responses, handlers |
 | `include/AsyncWebSocket.h`, `src/AsyncWebSocket.cpp` | WebSocket |
 | `include/AsyncEventSource.h`, `src/AsyncEventSource.cpp` | Server-Sent Events |
-| `include/IPAddress.h`, `include/WString.h`, `include/FS.h`, `src/FS.cpp` | Arduino-style IPv4 address, `String`, file system ([Arduino-Compat](Arduino-Compat.md)) |
+| `include/AsyncJson.h` | JSON responses and request handler (header only, needs ArduinoJson) |
+| `include/IPAddress.h`, `include/WString.h`, `include/Print.h`, `include/Stream.h`, `include/Arduino.h`, `include/FS.h`, `src/FS.cpp` | Arduino-style IPv4 address, `String`, `Print`/`Stream`, Arduino core shim, file system ([Arduino-Compat](Arduino-Compat.md)) |
 | `src/AsyncEmuInternal.h` | Shared `io_context` accessor, IPAddress/Asio conversions |
 | `cmake/FetchAsio.cmake` | Fetches standalone Asio 1.30.2 |

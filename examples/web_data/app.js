@@ -30,6 +30,14 @@ $('echoForm').onsubmit = async e => {
   $('echoOut').textContent = await r.text();
 };
 
+// JSON request body
+$('sumForm').onsubmit = async e => {
+  e.preventDefault();
+  const numbers = e.target.numbers.value.split(',').map(Number).filter(n => !Number.isNaN(n));
+  const r = await fetch('/api/sum', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numbers }) });
+  $('sumOut').textContent = r.status + ' ' + await r.text();
+};
+
 // multipart upload
 async function listFiles() {
   const files = await (await fetch('/api/files')).json();

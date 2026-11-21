@@ -5,7 +5,10 @@
 #include <fstream>
 #include <string>
 
+#include "Arduino.h"
 #include "FS.h"
+#include "Print.h"
+#include "Stream.h"
 #include "WString.h"
 #include "test_util.h"
 
@@ -121,8 +124,8 @@ int main() {
         {
             File f = fs.open("/dir/a.txt");
             CHECK(f);
-            CHECK(f.size() == 13);
-            CHECK(f.available() == 13);
+            CHECK(f.size() == 14);  // "hello world!\r\n": println ends lines with CRLF, like Arduino
+            CHECK(f.available() == 14);
             CHECK(!f.isDirectory());
             CHECK(std::string(f.name()) == "a.txt");
             CHECK(std::string(f.path()) == "/dir/a.txt");
@@ -130,7 +133,7 @@ int main() {
             CHECK(f.read() == 'h');
             CHECK(f.position() == 1);
             CHECK(f.seek(6));
-            CHECK(f.readString() == "world!\n");
+            CHECK(f.readString() == "world!\r\n");
             CHECK(f.available() == 0);
             CHECK(f.read() == -1);
             CHECK(f.getLastWrite() > 1600000000);
@@ -141,7 +144,7 @@ int main() {
             File f = fs.open("/dir/a.txt", "a");
             f.print("more");
         }
-        CHECK(fs.open("/dir/a.txt").size() == 17);
+        CHECK(fs.open("/dir/a.txt").size() == 18);
 
         // missing file
         CHECK(!fs.open("/missing.txt"));
@@ -194,6 +197,61 @@ int main() {
         LittleFS.open("/g.txt", "w").print("g");
         CHECK(LittleFS.exists("/g.txt"));
 
+        stdfs::remove_all(root);
+    }
+
+    // ===================== Print / Stream =====================
+    {
+        // a minimal Print that collects what is written
+        struct Collect : public Print {
+            std::string out;
+            size_t write(uint8_t c) override { out.push_back(static_cast<char>(c)); return 1; }
+        } p;
+        CHECK(p.print("ab") == 2);
+        p.print(String("cd"));
+        p.print('e');
+        p.print(42);
+        p.print(-7);
+        p.print(255, HEX);
+        p.print(5u, BIN);
+        p.print(3.14159, 3);
+        p.print(static_cast<unsigned char>(65));  // numbers, not characters
+        CHECK(p.out == "abcde42-7ff1013.14265");
+        p.out.clear();
+        p.println("x");
+        p.println(7);
+        p.println();
+        CHECK(p.out == "x\r\n7\r\n\r\n");
+        p.out.clear();
+        CHECK(p.printf("%d-%s-%05.1f", 5, "z", 2.5) == 9);
+        CHECK(p.out == "5-z-002.5");
+        p.out.clear();
+        std::string longFmt(500, 'k');
+        p.printf("%s", longFmt.c_str());  // longer than the internal stack buffer
+        CHECK(p.out == longFmt);
+
+        // Serial is a Print/Stream
+        Print& serial = Serial;
+        serial.print("");
+        CHECK(Serial.available() == 0 && Serial.read() == -1);
+
+        // File is a Stream: readBytes / readStringUntil / print into it
+        stdfs::path root = stdfs::temp_directory_path() / ("espasyncemu_stream_test_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        FS fs(root.string());
+        fs.begin();
+        {
+            File f = fs.open("/s.txt", "w");
+            Print& as = f;
+            as.print("alpha,beta\ngamma");
+        }
+        File f = fs.open("/s.txt");
+        Stream& st = f;
+        CHECK(st.readStringUntil(',') == "alpha");
+        char buf[8] = {0};
+        CHECK(st.readBytes(buf, 4) == 4 && std::string(buf) == "beta");
+        CHECK(st.peek() == '\n');
+        CHECK(st.readString() == "\ngamma");
+        CHECK(st.read() == -1);
         stdfs::remove_all(root);
     }
 

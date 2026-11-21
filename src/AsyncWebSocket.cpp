@@ -75,7 +75,11 @@ void AsyncWebSocketClient::_queueFrame(uint8_t opcode, const uint8_t* data, size
         if (_offset > 0 && pos != _queue.end()) ++pos;
         _queue.insert(pos, std::move(f));
     } else {
-        if (_queue.size() >= WS_MAX_QUEUED_MESSAGES) return;  // like the device: drop when the queue is full
+        if (_queue.size() >= WS_MAX_QUEUED_MESSAGES) {  // like the device: drop when the queue is full
+            AsyncEmu::warn("WebSocket client #" + std::to_string(_clientId) + ": message queue full (" + std::to_string(WS_MAX_QUEUED_MESSAGES) +
+                           "), message dropped");
+            return;
+        }
         _queue.push_back(std::move(f));
     }
     _runQueue();
@@ -420,6 +424,9 @@ void AsyncWebSocket::_handleEvent(AsyncWebSocketClient* client, AwsEventType typ
 bool AsyncWebSocket::canHandle(AsyncWebServerRequest* request) {
     if (!_enabled) return false;
     if (request->method() != HTTP_GET || !request->url().equals(_url) || !request->isExpectedRequestedConnType(RCT_WS)) return false;
+    request->addInterestingHeader("Sec-WebSocket-Version");
+    request->addInterestingHeader("Sec-WebSocket-Key");
+    request->addInterestingHeader("Sec-WebSocket-Protocol");
     return true;
 }
 
